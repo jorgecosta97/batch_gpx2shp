@@ -1,0 +1,54 @@
+import arcpy, os,shutil
+from arcpy import env
+from os import listdir
+from os.path import isfile, join
+
+arcpy.env.overwriteOutput = True
+
+
+def organizar_a_base(workspace):
+    def copy_list(old_list):
+        new_list =  []
+        copy_list_cont = 0
+        for n in old_list:
+            new_list.append(old_list[copy_list_cont])
+            copy_list_cont = copy_list_cont + 1
+        return new_list
+    
+    def remove(list, x):
+        remove_cont = 0
+        for n in list:
+            list[remove_cont] = list[remove_cont][:-x]
+            remove_cont = remove_cont + 1
+
+    arcpy.env.workspace = workspace
+
+    if not os.path.exists(workspace + "Shp"):
+        os.mkdir(workspace + "Shp")
+    if not os.path.exists(workspace + "lines"):
+        os.mkdir(workspace + "lines")
+    if not os.path.exists(workspace + "waypoints"):
+        os.mkdir(workspace + "waypoints")
+
+    files = [f for f in listdir(workspace) if isfile(join(workspace, f))]
+
+    files_name = copy_list(files)
+    remove(files_name, 4)
+
+    organizar_a_base_cont = 0
+
+    for n in files:
+        arcpy.GPXtoFeatures_conversion(files[organizar_a_base_cont], "Shp/" + files_name[organizar_a_base_cont])
+        selection = arcpy.SelectLayerByAttribute_management("Shp/" + files_name[organizar_a_base_cont] + ".shp", 'NEW_SELECTION', "Type = 'TRKPT'")
+        arcpy.PointsToLine_management(selection, "lines/lines_" + files_name[organizar_a_base_cont], 'Name', '#', 'NO_CLOSE')
+        selection2 = arcpy.SelectLayerByAttribute_management("Shp/" + files_name[organizar_a_base_cont] + ".shp", 'NEW_SELECTION', "Type = 'WPT'")
+        count1 = int(arcpy.GetCount_management(selection2).getOutput(0))
+        if not count1 == 0:
+            arcpy.FeatureClassToFeatureClass_conversion(selection2, "waypoints/", "waypoint_" + files_name[organizar_a_base_cont])
+            print(count1)
+        else:
+            print("No Waypoints")
+        organizar_a_base_cont = organizar_a_base_cont + 1
+        print ("File " + str(organizar_a_base_cont) + " converted!!! ")
+
+organizar_a_base("insert gpx files folder path")
